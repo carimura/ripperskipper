@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Ripper Skipper</title>
+<meta name="description" content="A cel-shaded wakeboarding game in your browser: cut hard, go big, land it.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230b1026'/%3E%3Cpath d='M6 40c8-10 14-10 22 0s14 10 22 0l8 0v14H6z' fill='%231778c2'/%3E%3Cpath d='M16 30l30-12 4 8-30 12z' fill='%23ffd21f' stroke='%230b1026' stroke-width='3'/%3E%3C/svg%3E">
+<style>
+  :root { --ink: #0b1026; --gold: #ffd21f; --hot: #ff5a1f; --cyan: #5fe3ff; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--ink); touch-action: none; overscroll-behavior: none; -webkit-touch-callout: none; }
+  .ui, #title, #over, #quit { zoom: var(--ui, 1); }      /* laid out for a 1100 × 700 window; smaller ones (phones) get it all scaled down: --ui, set in main.js */
+  canvas { display: block; }
+  body { font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', 'Arial Black', sans-serif; color: #fff; user-select: none; }
+  .ui { position: fixed; pointer-events: none; letter-spacing: .04em; transform: skewX(-8deg);
+        text-shadow: -2px -2px 0 var(--ink), 2px -2px 0 var(--ink), -2px 2px 0 var(--ink), 2px 2px 0 var(--ink), 0 5px 0 var(--ink); }
+  .lbl { display: block; font-size: 15px; color: var(--cyan); letter-spacing: .2em; }
+  #score { top: 18px; left: 30px; font-size: 54px; line-height: 1; color: var(--gold); }
+  #time { top: 18px; left: 50%; margin-left: -70px; width: 140px; text-align: center; font-size: 46px; line-height: 1; }
+  #time.low { color: var(--hot); }
+  #mult { top: 18px; right: 30px; text-align: right; font-size: 44px; line-height: 1; color: var(--hot); }
+  #mult small { display: block; font-size: 17px; color: #fff; letter-spacing: .12em; margin-top: 8px; }
+  #live { top: 21%; left: 0; right: 0; text-align: center; font-size: 30px; color: var(--cyan); opacity: 0; transition: opacity .15s; }
+  #pop { top: 27%; left: 0; right: 0; text-align: center; font-size: 52px; line-height: 1.05; color: var(--gold); opacity: 0; }
+  #pop b { display: block; font-weight: normal; font-size: .72em; color: #fff; }
+  #pop em { display: block; font-style: normal; font-size: .6em; letter-spacing: .22em; color: var(--cyan); }
+  #pop.l0 { color: #fff; }
+  #pop.l3 { color: #ff9a1f; }
+  #pop.l4 { color: #ff4fd8; }
+  #pop.l5 { color: #fff; text-shadow: -3px -3px 0 var(--ink), 3px -3px 0 var(--ink), -3px 3px 0 var(--ink), 3px 3px 0 var(--ink), 0 6px 0 #ff4fd8, 0 11px 0 var(--gold), 0 15px 0 var(--ink); }
+  #pop.l5 em, #pop.l4 em, #pop.l3 em { color: var(--gold); }
+  #pop.l5.go { animation-duration: 3s; }
+  #pop.bad { color: #ff3b30; }
+  #pop.go { animation: pop 1.9s cubic-bezier(.2, 1.4, .4, 1) forwards; }
+  @keyframes pop { 0% { opacity: 0; transform: skewX(-8deg) scale(.4); } 12% { opacity: 1; transform: skewX(-8deg) scale(1.12); } 22% { transform: skewX(-8deg) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: skewX(-8deg) translateY(-24px); } }
+  #scoreV { display: inline-block; transform-origin: left center; }
+  #scoreV.punch { animation: punch .4s cubic-bezier(.2, 1.6, .4, 1); }
+  @keyframes punch { 0% { transform: scale(1.45); color: #fff; } 100% { transform: scale(1); } }
+  #flash { position: fixed; inset: 0; pointer-events: none; opacity: 0; mix-blend-mode: screen;
+           background: radial-gradient(circle at 50% 45%, #fff 0, #fff3b0 38%, rgba(255, 210, 31, 0) 88%); }
+  #rays { position: fixed; left: 50%; top: 34%; width: 0; height: 0; pointer-events: none; opacity: 0; --size: 105vmin; --mask: radial-gradient(circle, transparent 10%, #000 24%, transparent 70%); }
+  #rays::before, #rays.mega::after { content: ''; position: absolute; width: var(--size); height: var(--size); left: calc(var(--size) / -2); top: calc(var(--size) / -2);
+                  border-radius: 50%; background: repeating-conic-gradient(rgba(255, 210, 31, .95) 0 6deg, rgba(255, 210, 31, 0) 6deg 18deg);
+                  -webkit-mask: var(--mask); mask: var(--mask); animation: spin 7s linear infinite; }
+  #rays.go { animation: rays 1.9s ease-out forwards; }
+  /* the biggest moves: two sets of rays turning against each other, right across the screen */
+  #rays.mega { --size: 240vmax; --mask: radial-gradient(circle, transparent 3%, #000 9%, rgba(0, 0, 0, .5) 28%, transparent 70%); }
+  #rays.mega::before { animation-duration: 3.2s; }
+  #rays.mega::after { background: repeating-conic-gradient(rgba(255, 79, 216, .9) 0 3deg, rgba(255, 255, 255, .9) 3deg 4.5deg, rgba(255, 79, 216, 0) 4.5deg 15deg); animation: spin 5s linear infinite reverse; }
+  #rays.mega.go { animation: mega 3s ease-out forwards; }
+  @keyframes rays { 0% { opacity: 0; transform: scale(.3); } 12% { opacity: .9; transform: scale(1.05); } 70% { opacity: .6; } 100% { opacity: 0; transform: scale(1.3); } }
+  @keyframes mega { 0% { opacity: 0; transform: scale(.1); } 7% { opacity: 1; transform: scale(1.12); } 14% { transform: scale(.92); } 21% { transform: scale(1.06); } 28% { opacity: 1; transform: scale(1); } 60% { opacity: .6; } 100% { opacity: 0; transform: scale(1.3); } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  body.wake .surf-only, body.surf .wake-only { display: none !important; }
+  #live.warn { color: #ff3b30; animation: blink .5s steps(2) infinite; }
+  #pocket { bottom: 46px; left: 50%; width: 280px; margin-left: -140px; text-align: center; }
+  #pocket div { height: 12px; margin-top: 4px; border: 3px solid var(--ink); background: rgba(11, 16, 38, .55); }
+  #pocketV { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--gold), #ff3b30); }
+  .pick { display: flex; gap: 46px; justify-content: center; margin-top: 22px; font-size: 34px; transform: skewX(-8deg); text-shadow: 0 3px 0 var(--ink); }
+  .pick span { opacity: .45; }
+  body.wake .pick .w, body.surf .pick .s { opacity: 1; color: var(--gold); text-decoration: underline; text-underline-offset: 8px; }
+  #help { bottom: 16px; left: 0; right: 0; text-align: center; font-size: 16px; opacity: .9; }
+  #help i { font-style: normal; color: var(--gold); }
+  .panel { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+           background: linear-gradient(180deg, rgba(11, 16, 38, .15), rgba(11, 16, 38, .55)); pointer-events: none; }
+  .panel.on { display: flex; }
+  .panel h1 { margin: 0; font-size: clamp(64px, 10.5vw, 132px); line-height: .9; font-weight: normal; color: var(--gold); transform: skewX(-10deg);
+              text-shadow: -4px -4px 0 var(--ink), 4px -4px 0 var(--ink), -4px 4px 0 var(--ink), 4px 4px 0 var(--ink), 0 12px 0 var(--hot), 0 16px 0 var(--ink); }
+  .panel h1 span { color: #fff; }
+  .panel h2 { margin: 26px 0 0; font-size: 26px; font-weight: normal; letter-spacing: .16em; color: var(--cyan); transform: skewX(-8deg); text-shadow: 0 3px 0 var(--ink); }
+  .panel table { margin: 26px auto 0; border-spacing: 14px 5px; font-size: 20px; transform: skewX(-8deg); text-shadow: 0 2px 0 var(--ink); }
+  .panel td:first-child { text-align: right; color: var(--gold); }
+  .panel td:last-child { text-align: left; }
+  .panel p { margin: 30px 0 0; font-size: 30px; transform: skewX(-8deg); text-shadow: 0 3px 0 var(--ink); animation: blink 1.1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: .25; } }
+  #over { background: linear-gradient(180deg, rgba(11, 16, 38, .55), rgba(11, 16, 38, .8)); }
+  #final { font-size: 96px; color: #fff; line-height: 1; margin-top: 10px; transform: skewX(-8deg); text-shadow: 0 6px 0 var(--ink); }
+  .cols { display: flex; gap: 60px; align-items: flex-start; justify-content: center; }
+  .panel .board { font-size: 17px; border-spacing: 12px 2px; }
+  .panel .board th { color: var(--cyan); font-weight: normal; letter-spacing: .12em; }
+  .panel .board td:first-child { color: #fff; opacity: .6; }
+  .panel .board td:nth-child(2) { text-align: left; color: #fff; }
+  .panel .board td:last-child { text-align: right; color: var(--gold); }
+  .panel .board tr.me td { color: var(--hot); opacity: 1; }
+  #entry { display: none; margin-top: 18px; font-size: 26px; color: var(--hot); transform: skewX(-8deg); text-shadow: 0 3px 0 var(--ink); }
+  #entry.on { display: block; }
+  #entry button { display: none; }
+  #entry i { font-style: normal; }
+  #name { width: 9em; margin: 0 10px; padding: 2px 8px; font: inherit; color: var(--gold); text-transform: uppercase; text-align: center; background: rgba(11, 16, 38, .6);
+          border: 3px solid var(--gold); outline: none; pointer-events: auto; }
+  /* an unlock: its icon, then its name over what it needs or does. Locked ones are dim; a new one starts dim, then flashes as it is added */
+  .card { --s: 46px; position: relative; display: inline-grid; grid-template-columns: auto 1fr; column-gap: 9px; align-content: center; text-align: left; white-space: nowrap; line-height: 1; }
+  .card svg { grid-row: 1 / 3; width: var(--s); height: var(--s); border: 3px solid var(--ink); border-radius: 9px; stroke: var(--ink); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+  .card b { align-self: end; font-weight: normal; }
+  .card small { margin-top: 4px; font-size: 13px; letter-spacing: .1em; color: var(--cyan); }
+  .card.locked { opacity: .55; }
+  .card.locked svg { filter: grayscale(1) brightness(.5); }
+  .card.new small { color: var(--gold); }
+  .card.pop svg { animation: unlock 1s var(--d) cubic-bezier(.2, 1.5, .4, 1) both; }
+  .card.pop b, .card.pop small { animation: lit .3s calc(var(--d) + .25s) both; }
+  .card.pop::before { content: ''; position: absolute; left: calc(var(--s) / 2 + 3px); top: 50%; width: 30px; height: 30px; margin: -15px; border-radius: 50%; border: 5px solid #fff; box-shadow: 0 0 0 5px var(--gold); opacity: 0; animation: burst .7s calc(var(--d) + .25s) ease-out; }   /* a ring thrown off as it lights */
+  @keyframes unlock { 0%, 25% { filter: grayscale(1) brightness(.5); transform: none; } 30% { filter: brightness(6) saturate(0); transform: scale(1.9) rotate(-8deg); box-shadow: 0 0 0 0 #fff; }
+                      60% { filter: none; transform: scale(.92); box-shadow: 0 0 22px 26px rgba(255, 210, 31, 0); } 100% { filter: none; transform: none; } }
+  @keyframes lit { 0% { opacity: .35; } }
+  @keyframes burst { 0% { opacity: 1; transform: scale(.4); } 100% { opacity: 0; transform: scale(5); } }
+  #fresh { display: flex; flex-wrap: wrap; gap: 12px 30px; justify-content: center; max-width: min(1000px, 94vw); margin-top: 16px; font-size: 26px; transform: skewX(-8deg); text-shadow: 0 3px 0 var(--ink); }
+  #fresh:not(:empty)::before { content: 'UNLOCKED!'; align-self: center; color: var(--hot); animation: blink .5s steps(2) infinite; }
+  #fresh .card { --s: 58px; }
+  /* the first run's haul: its own banner, and bigger cards */
+  #fresh.big { margin-top: 10px; font-size: 30px; }
+  #fresh.big .card { --s: 74px; }
+  #fresh.big::before { content: 'FIRST RUN BONUS — UNLOCKED!'; flex-basis: 100%; text-align: center; font-size: 44px; color: var(--gold); animation: brag .9s cubic-bezier(.2, 1.6, .4, 1) both, glow .6s .9s ease-in-out infinite alternate; }
+  @keyframes brag { 0% { opacity: 0; transform: scale(3); } 60% { opacity: 1; transform: scale(.9); } 100% { transform: none; } }
+  @keyframes glow { to { color: #fff; text-shadow: 0 3px 0 var(--ink), 0 0 24px var(--gold); } }
+  #fresh:has(.card:nth-child(4)) { font-size: 21px; }   /* a big haul: smaller, so two rows of them still fit */
+  #fresh:has(.card:nth-child(4)) .card { --s: 44px; }
+  #over .pick { margin-top: 14px; }
+  #over p { margin-top: 18px; }
+  /* the locker: most of the screen, with the boat or the lake in the band left above it. --big: the size of an icon, to fit the window */
+  #gear { --big: clamp(38px, min(9.4vh, 4.9vw), 104px); justify-content: flex-end; padding-bottom: 12px; background: linear-gradient(180deg, rgba(11, 16, 38, 0) 18%, rgba(11, 16, 38, .88) 33%); }
+  #gear h2 { margin: 0; font-size: 26px; }
+  #xp { margin-top: 4px; font-size: 24px; transform: skewX(-8deg); text-shadow: 0 3px 0 var(--ink); }
+  #xpbar { width: 520px; height: 12px; margin-top: 6px; border: 3px solid var(--ink); background: rgba(11, 16, 38, .55); transform: skewX(-8deg); }
+  #xpV { display: block; height: 100%; background: linear-gradient(90deg, var(--cyan), var(--gold)); }
+  #shelf { margin-top: 9px; font-size: calc(var(--big) * .27); transform: skewX(-8deg); text-shadow: 0 2px 0 var(--ink); }
+  #shelf section { display: flex; justify-content: center; }
+  #shelf div { display: flex; align-items: center; gap: 6px; height: calc(var(--big) * 1.74); padding: 0 12px; border: 3px solid transparent; }
+  #shelf div.at { border-color: var(--gold); background: rgba(11, 16, 38, .6); }
+  #shelf em { min-width: 86px; margin-right: 10px; text-align: right; font-size: 20px; font-style: normal; color: var(--cyan); letter-spacing: .14em; }
+  #shelf .card { --s: var(--big); width: calc(var(--big) * 2.15); grid-template-columns: 1fr; row-gap: 4px; justify-items: center; text-align: center; }   /* here the name goes under the icon */
+  #shelf .card { width: calc(var(--big) * 1.95); }   /* eight to a line: a little closer together */
+  #shelf .card svg { grid-row: auto; border-radius: calc(var(--big) * .2); }
+  #shelf .card small { margin: 0; min-height: 1em; font-size: calc(var(--big) * .18); letter-spacing: .04em; }
+  #shelf .card.pop::before { left: 50%; top: calc(var(--big) / 2 + 3px); }
+  #shelf .on b { color: var(--gold); text-decoration: underline; text-underline-offset: 4px; }
+  #shelf .on svg { border-color: var(--gold); }
+  #gear p { margin-top: 8px; font-size: 22px; }
+  /* ---- touch (the page gets class `touch` on a phone or tablet, and `run` during a run) ----
+     menus: buttons to tap, in place of the lines that name keys */
+  .taps, .thumbs { display: none; }
+  .touch .taps { display: flex; gap: 24px; justify-content: center; margin-top: 24px; transform: skewX(-8deg); }
+  .touch .panel p.keys, .touch #help, .touch #title table:not(.board), .touch #entry i { display: none; }
+  .touch .panel p.thumbs { display: block; font-size: 24px; animation: none; }
+  .taps b, .touch #entry button { display: inline-block; pointer-events: auto; padding: 6px 28px; font: inherit; font-size: 32px; font-weight: normal; letter-spacing: .06em; color: var(--ink); text-shadow: none;
+            background: var(--gold); border: 4px solid var(--ink); border-radius: 0; box-shadow: 0 6px 0 var(--ink); }
+  .taps b.held { background: #fff; }
+  .pick span, #shelf .card { pointer-events: auto; cursor: pointer; }
+  /* a run: a stick under the left thumb (it starts wherever the thumb lands), buttons under the right, music and exit in the corner */
+  #pad { display: none; }
+  .touch.run #pad { display: block; }
+  #stick { position: fixed; left: 0; bottom: 0; width: 46%; height: 78%; }
+  #knob { position: fixed; left: calc(96px + env(safe-area-inset-left)); bottom: 96px; width: 120px; height: 120px; margin: -60px; border: 4px solid rgba(255, 255, 255, .45); border-radius: 50%; background: rgba(11, 16, 38, .2); pointer-events: none; }
+  #knob i { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px; border-radius: 50%; background: rgba(255, 255, 255, .65); }
+  #btns { position: fixed; right: calc(14px + env(safe-area-inset-right)); bottom: calc(14px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(3, 58px) 104px; grid-template-rows: repeat(3, 58px); gap: 8px; }
+  #btns b, #corner b { display: flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: normal; font-size: 12px; letter-spacing: .04em; color: #fff; text-shadow: 0 2px 0 var(--ink);
+            background: rgba(11, 16, 38, .4); border: 3px solid rgba(255, 255, 255, .55); }
+  #btns b.held, #corner b.held { background: var(--gold); color: var(--ink); text-shadow: none; }
+  #flick { position: fixed; right: 0; top: 0; width: 54%; height: 100%; }      /* the right thumb anywhere off the buttons: drag down to load, back up to pop */
+  #btns { pointer-events: none; } #btns b { pointer-events: auto; }
+  #btns .lane { grid-area: 1 / 4 / span 3; display: flex; align-items: center; justify-content: center; text-align: center; font-style: normal; font-size: 20px; line-height: 1.5; color: #fff; text-shadow: 0 2px 0 var(--ink);
+            border: 3px dashed var(--gold); border-radius: 52px; background: rgba(11, 16, 38, .25); }
+  #btns .lane.held { background: var(--gold); color: var(--ink); text-shadow: none; }
+  #corner { position: fixed; top: calc(100px * var(--ui, 1) + 6px); right: calc(14px + env(safe-area-inset-right)); display: flex; gap: 10px; }
+  #corner b { width: 42px; height: 42px; font-size: 20px; }
+  #turn { display: none; position: fixed; inset: 0; align-items: center; justify-content: center; text-align: center; font-size: 34px; line-height: 1.5; color: var(--gold); background: var(--ink); }
+  @media (orientation: portrait) { .touch #turn { display: flex; } }
+  @media (max-height: 520px) { #gear h2 { display: none; } #gear .taps { margin-top: 6px; } #gear .taps b { font-size: 22px; padding: 3px 22px; } }   /* a phone: the locker needs the room */
+  #quit { background: rgba(11, 16, 38, .72); }
+  #quit h2 { margin: 0; font-size: 54px; color: var(--gold); }
+  .lock0 .t0, .lock1 .t1, .lock2 .t2, .lock3 .t3, .lock4 .t4, .lock5 .t5, .lock6 .t6, .lock7 .t7 { display: none; }
+  /* instructions: a plain, upright face — easier to read than the display font */
+  #help, #title table:not(.board), .thumbs, #more, .card small, #quit p { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-weight: 700; letter-spacing: .01em; }
+  #help, #title table:not(.board) { transform: none; }
+  #help { font-size: 14px; white-space: nowrap; }
+  #title table:not(.board) { font-size: 17px; }
+  #more { opacity: .5; }
+  #fade { position: fixed; inset: 0; background: #dff4ff; opacity: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="flash"></div>
+<div id="rays"></div>
+<div id="score" class="ui"><span class="lbl">SCORE</span><span id="scoreV">0</span></div>
+<div id="time" class="ui"><span class="lbl">TIME</span><span id="timeV">2:00</span></div>
+<div id="mult" class="ui"><span class="lbl">COMBO</span><span id="multV">x1</span><small id="best">BEST 0</small></div>
+<div id="live" class="ui"></div>
+<div id="pop" class="ui"></div>
+<div id="pocket" class="ui surf-only"><span class="lbl">FALLING BEHIND</span><div><i id="pocketV"></i></div></div>
+<div id="help" class="ui"><span class="wake-only"><i>← →</i> carve · spin in the air &nbsp; <i>↑ ↓</i> roll in the air &nbsp; <i>SPACE</i> or <i>↓</i> hold to load, release to pop &nbsp; <i>W A S D</i><span class="t2"> <i>F</i></span><span class="t5"> <i>C</i></span> grabs<span class="t0"> &nbsp; <i>E</i> air raley</span><span class="t3"> (+ a grab: hoochie)</span><span class="t1"> &nbsp; <i>Q</i> tantrum</span><span class="t4"> &nbsp; <i>R</i> s-bend</span></span><span class="surf-only"><i>← →</i> down · up the face (pump ← → to catch up) &nbsp; <i>↑ ↓</i> forward · back &nbsp; <i>SPACE</i> ollie &nbsp; <i>Q</i> surface 180 &nbsp; in the air: <i>← →</i> spin &nbsp; <i>W A S D</i> grabs &nbsp; <i>E</i> shove-it</span> &nbsp; <i>M</i> music</div>
+<div id="title" class="panel on">
+  <h1>RIPPER<br><span>SKIPPER</span></h1>
+  <div class="pick"><span class="w">WAKEBOARD</span><span class="s">WAKESURF</span></div>
+  <div class="cols"><div>
+  <table class="surf-only">
+    <tr><td>← →</td><td>down the face · up the face — fall behind? pump ← → ← → to catch up</td></tr>
+    <tr><td>↑ ↓</td><td>step forward · back on the board, to ease up towards the boat or drop back a little</td></tr>
+    <tr><td>SPACE</td><td>hold to load, release to ollie — at the top of the wave, climbing, it launches you off the lip</td></tr>
+    <tr><td>Q</td><td>surface 180 · twice for a 360</td></tr>
+    <tr><td>in the air</td><td>← → spin · W A S D grabs · E shove-it</td></tr>
+  </table>
+  <table class="wake-only">
+    <tr><td>← →</td><td>edge across the wake · spin in the air</td></tr>
+    <tr><td>↑ ↓</td><td>front roll · back roll</td></tr>
+    <tr><td>SPACE or ↓</td><td>hold to load, release at the lip to pop</td></tr>
+    <tr><td>W A S D<span class="t2"> F</span><span class="t5"> C</span></td><td>nose · melon · tail · indy<span class="t2"> · stalefish</span><span class="t5"> · mute</span> grab</td></tr>
+    <tr class="t0"><td>E</td><td>air raley — lay it out, pull back in<span class="t3"> · with a grab held too, a hoochie glide</span></td></tr>
+    <tr class="t1"><td>Q</td><td>tantrum — a backflip: hold it all the way round</td></tr>
+    <tr class="t4"><td>R</td><td>s-bend — laid out, rolling right over: hold it all the way round</td></tr>
+    <tr class="t6"><td>720</td><td>spins are quick enough for a 720 off your biggest air<span class="t7"> — and rolls for a double</span></td></tr>
+    <tr><td></td><td id="more"></td></tr>
+  </table>
+  </div><table class="board"></table></div>
+  <p class="keys">← → CHOOSE · SPACE TO RIDE · G LOCKER</p>
+  <p class="thumbs">LEFT THUMB STEERS AND ROLLS · RIGHT THUMB SWIPES DOWN THEN UP TO POP, TAPS TO GRAB AND THROW TRICKS</p>
+  <div class="taps"><b data-key="Space">RIDE</b><b data-key="KeyG">LOCKER</b></div>
+</div>
+<div id="over" class="panel">
+  <h2>TIME!</h2>
+  <div id="final">0</div>
+  <form id="entry">TOP 10! YOUR NAME <input id="name" maxlength="10" autocomplete="off" spellcheck="false" enterkeyhint="done"> <i>THEN ENTER</i><button>OK</button></form>
+  <div class="cols"><table id="stats"></table><table class="board"></table></div>
+  <div id="fresh"></div>
+  <div class="pick"><span class="w">WAKEBOARD</span><span class="s">WAKESURF</span></div>
+  <p class="keys">← → CHOOSE · SPACE FOR THE LOCKER</p>
+  <div class="taps"><b data-key="KeyG">LOCKER</b></div>
+</div>
+<div id="gear" class="panel">
+  <h2>THE LOCKER</h2>
+  <div id="xp"></div>
+  <div id="xpbar"><i id="xpV"></i></div>
+  <div id="shelf"></div>
+  <p class="keys">↑ ↓ ← → CHOOSE · SPACE TO RIDE</p>
+  <div class="taps"><b data-key="Space">RIDE</b></div>
+</div>
+<div id="pad">
+  <div id="stick"></div><div id="flick"></div><div id="knob"><i></i></div>
+  <div id="btns">
+    <b data-key="KeyE" class="t0 wake-only" style="grid-area: 1 / 1">RALEY</b><b data-key="KeyE" class="surf-only" style="grid-area: 1 / 1">SHOVE</b>
+    <b data-key="KeyQ" class="t1 wake-only" style="grid-area: 1 / 2">TANTRUM</b><b data-key="KeyQ" class="surf-only" style="grid-area: 1 / 2">180</b>
+    <b data-key="KeyR" class="t4 wake-only" style="grid-area: 1 / 3">S-BEND</b>
+    <b data-key="KeyW" style="grid-area: 2 / 1">NOSE</b><b data-key="KeyA" style="grid-area: 2 / 2">MELON</b><b data-key="KeyF" class="t2" style="grid-area: 2 / 3">STALE</b>
+    <b data-key="KeyS" style="grid-area: 3 / 1">TAIL</b><b data-key="KeyD" style="grid-area: 3 / 2">INDY</b><b data-key="KeyC" class="t5" style="grid-area: 3 / 3">MUTE</b>
+    <i class="lane" id="lane">↓<br>POP<br>↑</i>
+  </div>
+  <div id="corner"><b data-key="KeyM">♪</b><b data-key="Escape">✕</b></div>
+</div>
+<div id="quit" class="panel"><h2>EXIT THIS RUN?</h2><p class="keys">Y &nbsp;YES &nbsp;·&nbsp; N &nbsp;NO</p><div class="taps"><b data-key="KeyY">YES</b><b data-key="KeyN">NO</b></div></div>
+<div id="turn">TURN YOUR PHONE<br>ON ITS SIDE</div>
+<div id="fade"></div>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
