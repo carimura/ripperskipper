@@ -164,6 +164,7 @@
   #corner b { width: 42px; height: 42px; font-size: 20px; }
   #turn { display: none; position: fixed; inset: 0; align-items: center; justify-content: center; text-align: center; font-size: 34px; line-height: 1.5; color: var(--gold); background: var(--ink); }
   @media (orientation: portrait) { .touch #turn { display: flex; } }
+  @media (max-height: 520px) { .touch #title .board tr:nth-child(n+5) { display: none; } }   /* a phone: the title shows the top three, so RIDE stays on screen */
   @media (max-height: 520px) { #gear h2 { display: none; } #gear .taps { margin-top: 6px; } #gear .taps b { font-size: 22px; padding: 3px 22px; } }   /* a phone: the locker needs the room */
   #quit { background: rgba(11, 16, 38, .72); }
   #quit h2 { margin: 0; font-size: 54px; color: var(--gold); }

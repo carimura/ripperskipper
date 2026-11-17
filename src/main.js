@@ -31,13 +31,13 @@ const audio = createAudio();
 
 let dpr = Math.min(devicePixelRatio, 2), slow = 0, ui = 1;
 function resize() {
-  const w = innerWidth, h = innerHeight;
+  const w = innerWidth, h = Math.min(innerHeight, visualViewport?.height || innerHeight);   // a phone's browser bars take some of the height
   document.documentElement.style.setProperty('--ui', ui = Math.min(1, w / 1100, h / 700));   // menus and HUD are laid out for a window that size: on anything smaller they shrink to fit
   renderer.setPixelRatio(dpr); renderer.setSize(w, h);
   camera.aspect = w / h; camera.updateProjectionMatrix();
   pipeline.resize(w, h, dpr);
 }
-addEventListener('resize', resize); resize();
+addEventListener('resize', resize); visualViewport?.addEventListener('resize', resize); resize();
 
 // ---- game state ----
 const s = createSim();
@@ -248,7 +248,8 @@ function handleEvents() {
   for (const e of s.events) {
     if (e.type === 'takeoff') {                       // ← → ↓ pressed in the last moment before the lip are a spin or roll; held for longer they were a carve or a crouch…
       const popped = s.popT > 0 && !C.surf;           // …except that popping with ← → still held is a jump and a spin in one go (not surfing: there ← → is held all the time)
-      for (const k of ['ArrowLeft', 'ArrowRight', 'ArrowDown']) if (keys.has(k) && performance.now() - downAt[k] > 300 && !(popped && k !== 'ArrowDown')) stale.add(k);
+      const touch = document.documentElement.classList.contains('touch');   // on a phone the thumb is always on the stick: nothing it holds at take-off spins or rolls — only a fresh push in the air
+      for (const k of ['ArrowLeft', 'ArrowRight', 'ArrowDown', ...(touch ? ['ArrowUp'] : [])]) if (keys.has(k) && (touch || performance.now() - downAt[k] > 300 && !(popped && k !== 'ArrowDown'))) stale.add(k);
     }
     else if (e.type === 'tick') {                    // a half-spin, roll or grab completed in the air
       const n = Math.min(e.n, 7);
@@ -385,8 +386,8 @@ for (const b of document.querySelectorAll('[data-key]')) {                      
 }
 const DIRS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }, knob = $('knob');
 let thumb = null;                                                                // where the left thumb came down: the stick's middle
-function steer(dx, dy) {                                                          // far enough off the middle is a key held — further for ↑ ↓, which are not to be hit by accident while carving
-  for (const k in DIRS) { const on = dx * DIRS[k][0] + dy * DIRS[k][1] > (DIRS[k][0] ? 16 : 36); if (on !== keys.has(k)) key(on ? 'keydown' : 'keyup', k); }
+function steer(dx, dy) {                                                          // far enough off the middle is a key held — further for ↑ ↓, which are not to be hit by accident while carving, and further again in the air, where it is a spin or a roll
+  for (const k in DIRS) { const on = dx * DIRS[k][0] + dy * DIRS[k][1] > (DIRS[k][0] ? (s.air ? 30 : 16) : (s.air ? 50 : 36)); if (on !== keys.has(k)) key(on ? 'keydown' : 'keyup', k); }
   knob.firstChild.style.transform = `translate(${clamp(dx, -40, 40)}px, ${clamp(dy, -40, 40)}px)`;
 }
 $('stick').addEventListener('pointerdown', e => { e.target.setPointerCapture(e.pointerId); thumb = [e.clientX, e.clientY]; knob.style.left = e.clientX + 'px'; knob.style.top = e.clientY + 'px'; audio.start(); });
