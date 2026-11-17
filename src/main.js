@@ -378,6 +378,7 @@ function frame(now) {
 const key = (type, code) => dispatchEvent(new KeyboardEvent(type, { code })), root = document.documentElement;
 if (matchMedia('(pointer: coarse)').matches) root.classList.add('touch');
 addEventListener('touchstart', () => root.classList.add('touch'), { once: true, passive: true });
+for (const t of ['touchend', 'click']) addEventListener(t, () => audio.start(), { passive: true });   // the touches an iPhone lets sound start from
 addEventListener('contextmenu', e => e.preventDefault());
 for (const b of document.querySelectorAll('[data-key]')) {                       // a button is a key: down while it is held
   const up = () => { if (b.classList.contains('held')) { b.classList.remove('held'); key('keyup', b.dataset.key); } };

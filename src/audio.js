@@ -7,7 +7,8 @@ export function createAudio() {
   let ctx, master, muffle, noise, rush, rushF, wind, music, engine, engineF, engineG, musicOn = true, songNo = 0;
 
   function start() {
-    if (ctx) return;
+    if (ctx) { if (ctx.state !== 'running' && !document.hidden) ctx.resume(); return; }   // an iPhone only lets sound start from some touches: try again on the next
+    if (navigator.audioSession) navigator.audioSession.type = 'playback';   // an iPhone mutes web audio when the ringer switch is on silent — but not a game's
     ctx = new AudioContext();
     muffle = ctx.createBiquadFilter(); muffle.type = 'lowpass'; muffle.frequency.value = 20000; muffle.connect(ctx.destination);
     const limiter = ctx.createDynamicsCompressor();           // music + a big splash together must not clip
