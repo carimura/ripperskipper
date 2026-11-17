@@ -9,7 +9,7 @@
 <style>
   :root { --ink: #0b1026; --gold: #ffd21f; --hot: #ff5a1f; --cyan: #5fe3ff; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: var(--ink); touch-action: none; overscroll-behavior: none; -webkit-touch-callout: none; }
-  .ui, #title, #over, #quit { zoom: var(--ui, 1); }      /* laid out for a 1100 × 700 window; smaller ones (phones) get it all scaled down: --ui, set in main.js */
+  .ui, #title, #over, #quit, #tips { zoom: var(--ui, 1); }      /* laid out for a 1100 × 700 window; smaller ones (phones) get it all scaled down: --ui, set in main.js */
   canvas { display: block; }
   body { font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', 'Arial Black', sans-serif; color: #fff; user-select: none; }
   .ui { position: fixed; pointer-events: none; letter-spacing: .04em; transform: skewX(-8deg);
@@ -164,11 +164,13 @@
   @media (orientation: portrait) { .touch #turn { display: flex; } }
   @media (max-height: 520px) { .touch #title .board tr:nth-child(n+5) { display: none; } }   /* a phone: the title shows the top three, so RIDE stays on screen */
   @media (max-height: 520px) { #gear h2 { display: none; } #gear .taps { margin-top: 6px; } #gear .taps b { font-size: 22px; padding: 3px 22px; } }   /* a phone: the locker needs the room */
-  #quit { background: rgba(11, 16, 38, .72); }
+  #quit, #tips { background: rgba(11, 16, 38, .72); }
+  #tips h2 { margin: 0 0 12px; font-size: 54px; color: var(--gold); }
+  #tips p { margin: 6px 0; font-size: 26px; color: #fff; opacity: 1; animation: none; }
   #quit h2 { margin: 0; font-size: 54px; color: var(--gold); }
   .lock0 .t0, .lock1 .t1, .lock2 .t2, .lock3 .t3, .lock4 .t4, .lock5 .t5, .lock6 .t6, .lock7 .t7 { display: none !important; }   /* !important: over the touch buttons' own display */
   /* instructions: a plain, upright face — easier to read than the display font */
-  #help, #title table:not(.board), .thumbs, #more, .card small, #quit p { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-weight: 700; letter-spacing: .01em; }
+  #help, #title table:not(.board), .thumbs, #more, .card small, #quit p, #tips p { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-weight: 700; letter-spacing: .01em; }
   #help, #title table:not(.board) { transform: none; }
   #help { font-size: 14px; white-space: nowrap; }
   #title table:not(.board) { font-size: 17px; }
@@ -240,6 +242,7 @@
   </div>
   <div id="corner"><b data-key="KeyM">♪</b><b data-key="Escape">✕</b></div>
 </div>
+<div id="tips" class="panel"><h2>HOW TO RIDE</h2><p>LEFT THUMB: PULL DOWN TO LOAD, LET IT SPRING UP TO POP</p><p>IN THE AIR: LEFT / RIGHT TO SPIN · UP / DOWN TO FLIP</p><p>BUTTONS ON THE RIGHT FOR GRABS AND TRICKS</p><div class="taps"><b data-key="KeyK">GOT IT</b></div></div>
 <div id="quit" class="panel"><h2>EXIT THIS RUN?</h2><p class="keys">Y &nbsp;YES &nbsp;·&nbsp; N &nbsp;NO</p><div class="taps"><b data-key="KeyY">YES</b><b data-key="KeyN">NO</b></div></div>
 <div id="turn">TURN YOUR PHONE<br>ON ITS SIDE</div>
 <div id="fade"></div>

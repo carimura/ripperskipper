@@ -45,7 +45,7 @@ That's all you need to play. For the leaderboard too, set up the Worker config o
 
 **Both:** M toggles music, Esc asks to quit the run, G opens the locker from the menus. Pick the mode on the title screen with ← →, or add `?surf` to the URL.
 
-**Touch** (phone held sideways): the left thumb does the riding with a stick that starts wherever it lands — push it left and right to carve, pull it down and let it spring back to pop, and in the air push it again to spin or roll (it counts from where the thumb was at take-off, so nothing it was already holding sets one off). The right thumb taps the buttons for grabs and tricks.
+**Touch** (phone held sideways): the left thumb does the riding with a stick that starts wherever it lands — push it left and right to carve, pull it down and let it spring back to pop, and in the air push it again: left or right to spin, up or down to roll (it counts from where the thumb was at take-off, so nothing it was already holding sets one off, and only the stronger direction of a push counts). The first ride on a phone opens with a short how-to. The right thumb taps the buttons for grabs and tricks.
 
 ## Scoring and unlocks
 

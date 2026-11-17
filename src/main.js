@@ -119,6 +119,7 @@ function startRun() {
   resetRider(s); s.events.length = 0; shore.start(C.surf ? 420 : 0);   // San Francisco Bay: out at sea again — surfing, slower, starts nearer the Golden Gate so it gets under it
   if (!C.surf) beginStart(s);                         // a wakeboard run opens with the boat pulling the rider up out of the water
   for (const id of ['title', 'over', 'gear']) $(id).classList.remove('on');
+  if (document.documentElement.classList.contains('touch') && !localStorage.getItem('ripperskipper.tips')) $('tips').classList.add('on'), tips = true;   // a first ride on a phone: how to ride, before it starts
 }
 function endRun() {
   game.mode = 'over'; game.score = Math.round(game.score / 10) * 10;      // surfing adds points by the fraction
@@ -175,7 +176,7 @@ function award(e) {
 }
 
 // ---- input ----
-let quit = false;                                       // Esc in a run: stopped, asking whether to exit
+let quit = false, tips = false;                         // Esc in a run: stopped, asking whether to exit; tips: a first ride on a phone, stopped to show how
 const keys = new Set(), stale = new Set(), downAt = {};   // stale: the carving key, still held at take-off, doesn't start a spin
 const held = c => keys.has(c) && !stale.has(c);
 addEventListener('keydown', e => {
@@ -185,6 +186,7 @@ addEventListener('keydown', e => {
   }
   if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'].includes(e.code)) e.preventDefault();
   if (e.repeat) return;
+  if (tips) { if (e.code === 'KeyK') { $('tips').classList.remove('on'); tips = false; localStorage.setItem('ripperskipper.tips', 1); } return; }   // GOT IT
   if (quit || (e.code === 'Escape' && game.mode === 'run')) {   // Esc stops a run and asks: Y (or Enter) exits to the title, N (or Esc again) rides on
     const yes = quit && (e.code === 'KeyY' || e.code === 'Enter');
     if (!quit || yes || e.code === 'KeyN' || e.code === 'Escape') $('quit').classList.toggle('on', quit = !quit);
@@ -350,7 +352,7 @@ let last = performance.now(), acc = 0;
 function frame(now) {
   requestAnimationFrame(frame);
   const last0 = last, real = Math.min(0.05, (now - last) / 1000); last = now;
-  const dt = quit ? 0 : real * (window.__speed ?? 1) * (slowmo > 0 ? 1 - 0.7 * Math.min(1, slowmo / 0.2) : 1);   // a beat of slow motion on a wipeout; stopped while asking whether to exit
+  const dt = quit || tips ? 0 : real * (window.__speed ?? 1) * (slowmo > 0 ? 1 - 0.7 * Math.min(1, slowmo / 0.2) : 1);   // a beat of slow motion on a wipeout; stopped while asking whether to exit
   slowmo -= real;
   slow = now - last0 > 24 ? slow + 1 : Math.max(0, slow - 2);      // struggling to hold 60 fps: render fewer pixels
   if (slow > 90 && dpr > 1) { dpr = Math.max(1, dpr - 0.25); slow = 0; resize(); }
@@ -388,12 +390,13 @@ for (const b of document.querySelectorAll('[data-key]')) {                      
   b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up);
 }
 const DIRS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }, knob = $('knob');
-let thumb = null, at = null, from = null, liftT = -1e9;                         // thumb: where the left thumb came down, the stick's middle; at: where it is now; from: in the air, where it was at take-off
+let thumb = null, at = null, from = null, liftT = -1e9, axis = null;                         // thumb: where the left thumb came down, the stick's middle; at: where it is now; from: in the air, where it was at take-off
 function steer() {                                                                // far enough off the middle is a key held — further for ↑ ↓, which are not to be hit by accident while carving.
   if (!s.air) from = null;
   if (from && performance.now() - liftT < 300) from[1] = Math.min(from[1], at[1]);   // In the air it is a spin or a roll, pushed from where the thumb was at take-off (and the thumb's spring back up from a pop doesn't count)
-  const [ox, oy] = from || thumb || [0, 0], dx = thumb ? at[0] - ox : 0, dy = thumb ? at[1] - oy : 0;
-  for (const k in DIRS) { const on = dx * DIRS[k][0] + dy * DIRS[k][1] > (DIRS[k][0] ? (from ? 30 : 16) : (from ? 40 : 36)); if (on !== keys.has(k)) key(on ? 'keydown' : 'keyup', k); }
+  const [ox, oy] = from || thumb || [0, 0], dx = thumb ? at[0] - ox : 0, dy = thumb ? at[1] - oy : 0, ex = Math.abs(dx) - 30, ey = Math.abs(dy) - 40;
+  if (!from || (ex < 0 && ey < 0)) axis = null; else axis ??= ex > ey ? 'x' : 'y';   // in the air only the stronger way counts, until the thumb comes back: a flip doesn't spin too
+  for (const k in DIRS) { const on = dx * DIRS[k][0] + dy * DIRS[k][1] > (DIRS[k][0] ? (from ? 30 : 16) : (from ? 40 : 36)) && (!from || axis === (DIRS[k][0] ? 'x' : 'y')); if (on !== keys.has(k)) key(on ? 'keydown' : 'keyup', k); }
   knob.firstChild.style.transform = thumb ? `translate(${clamp(at[0] - thumb[0], -40, 40)}px, ${clamp(at[1] - thumb[1], -40, 40)}px)` : '';
 }
 $('stick').addEventListener('pointerdown', e => { e.target.setPointerCapture(e.pointerId); thumb = [e.clientX, e.clientY]; at = [...thumb]; from = s.air ? [...thumb] : null; knob.style.left = e.clientX + 'px'; knob.style.top = e.clientY + 'px'; audio.start(); });
