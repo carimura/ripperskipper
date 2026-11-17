@@ -233,9 +233,10 @@ function readInput() {
     return { steer: s.air || game.mode === 'gear' ? 0 : ph < 3.3 ? 1 : ph < 6.9 ? -1 : 0, flip: 0, pop: false, grab: s.air && s.air.t > 0.25 ? 'indy' : null };
   }
   const grab = held('KeyD') ? 'indy' : held('KeyA') ? 'melon' : held('KeyS') ? 'tail' : held('KeyW') ? 'nose' : held('KeyF') && got(STALE) ? 'stale' : held('KeyC') && got(MUTE) ? 'mute' : null, b = held('KeyE');
+  const spin = s.air && held('KeyZ') ? (s.vx < 0 ? -1 : 1) : 0, roll = s.air && held('KeyX') ? 1 : 0;   // the phone's SPIN and FLIP buttons: in the air, a spin the way the rider is going, a backroll
   return {
-    steer: (held('ArrowRight') ? 1 : 0) - (held('ArrowLeft') ? 1 : 0),
-    flip: C.surf ? 0 : (held('ArrowDown') ? 1 : 0) - (held('ArrowUp') ? 1 : 0),   // no rolls on a surfboard
+    steer: (held('ArrowRight') ? 1 : 0) - (held('ArrowLeft') ? 1 : 0) || spin,
+    flip: C.surf ? 0 : (held('ArrowDown') ? 1 : 0) - (held('ArrowUp') ? 1 : 0) || roll,   // no rolls on a surfboard
     pop: (held('Space') || (held('ArrowDown') && !C.surf)) && !s.air,          // wakeboarding, ↓ is a crouch on the water and a back roll in the air
     grab: b && !C.surf && got(RALEY) ? (grab && got(HOOCHIE) ? 'hoochie' : 'raley') : grab,   // E: an Air Raley behind the boat, a Hoochie Glide with a grab key as well (once they are unlocked); a shove-it on the wave
     bend: !C.surf && held('KeyR') && got(SBEND),                             // R: an S-Bend
@@ -399,10 +400,10 @@ $('flick').addEventListener('pointerdown', e => { e.target.setPointerCapture(e.p
 $('flick').addEventListener('pointermove', e => {
   if (!flick) return;
   const y = e.clientY, f = flick;
-  if (f.on ? f.at - y > 10 : y - f.at > 14) { f.on = !f.on; f.at = y; key(f.on ? 'keydown' : 'keyup', 'Space'); $('lane').classList.toggle('held', f.on); }
+  if (f.on ? f.at - y > 10 : y - f.at > 14) { f.on = !f.on; f.at = y; key(f.on ? 'keydown' : 'keyup', 'Space'); }
   else f.at = f.on ? Math.max(f.at, y) : Math.min(f.at, y);                     // measured from the lowest point while loading, the highest while not
 });
-for (const t of ['pointerup', 'pointercancel']) $('flick').addEventListener(t, () => { if (flick?.on) { key('keyup', 'Space'); $('lane').classList.remove('held'); } flick = null; });
+for (const t of ['pointerup', 'pointercancel']) $('flick').addEventListener(t, () => { if (flick?.on) key('keyup', 'Space'); flick = null; });
 for (const el of document.querySelectorAll('.pick span')) el.addEventListener('click', () => {      // tap a mode to choose it
   if (game.mode !== 'run' && game.mode !== 'gear' && el.classList.contains('w') !== (game.kind === 'wake')) setKind(game.kind === 'wake' ? 'surf' : 'wake');
 });

@@ -151,15 +151,15 @@
   #stick { position: fixed; left: 0; bottom: 0; width: 46%; height: 78%; }
   #knob { position: fixed; left: calc(96px + env(safe-area-inset-left)); bottom: 96px; width: 120px; height: 120px; margin: -60px; border: 4px solid rgba(255, 255, 255, .45); border-radius: 50%; background: rgba(11, 16, 38, .2); pointer-events: none; }
   #knob i { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px; border-radius: 50%; background: rgba(255, 255, 255, .65); }
-  #btns { position: fixed; right: calc(14px + env(safe-area-inset-right)); bottom: calc(14px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(3, 58px) 104px; grid-template-rows: repeat(3, 58px); gap: 8px; }
+  #btns { position: fixed; right: calc(14px + env(safe-area-inset-right)); bottom: calc(14px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  #btns div { display: flex; gap: 8px; }
+  #btns b { width: 58px; height: 58px; }
+  #btns b.big { width: 76px; border-radius: 29px; border-color: var(--gold); font-size: 15px; }   /* spin and flip, nearest the thumb */
   #btns b, #corner b { display: flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: normal; font-size: 12px; letter-spacing: .04em; color: #fff; text-shadow: 0 2px 0 var(--ink);
             background: rgba(11, 16, 38, .4); border: 3px solid rgba(255, 255, 255, .55); }
   #btns b.held, #corner b.held { background: var(--gold); color: var(--ink); text-shadow: none; }
   #flick { position: fixed; right: 0; top: 0; width: 54%; height: 100%; }      /* the right thumb anywhere off the buttons: drag down to load, back up to pop */
   #btns { pointer-events: none; } #btns b { pointer-events: auto; }
-  #btns .lane { grid-area: 1 / 4 / span 3; display: flex; align-items: center; justify-content: center; text-align: center; font-style: normal; font-size: 20px; line-height: 1.5; color: #fff; text-shadow: 0 2px 0 var(--ink);
-            border: 3px dashed var(--gold); border-radius: 52px; background: rgba(11, 16, 38, .25); }
-  #btns .lane.held { background: var(--gold); color: var(--ink); text-shadow: none; }
   #corner { position: fixed; top: calc(100px * var(--ui, 1) + 6px); right: calc(14px + env(safe-area-inset-right)); display: flex; gap: 10px; }
   #corner b { width: 42px; height: 42px; font-size: 20px; }
   #turn { display: none; position: fixed; inset: 0; align-items: center; justify-content: center; text-align: center; font-size: 34px; line-height: 1.5; color: var(--gold); background: var(--ink); }
@@ -168,7 +168,7 @@
   @media (max-height: 520px) { #gear h2 { display: none; } #gear .taps { margin-top: 6px; } #gear .taps b { font-size: 22px; padding: 3px 22px; } }   /* a phone: the locker needs the room */
   #quit { background: rgba(11, 16, 38, .72); }
   #quit h2 { margin: 0; font-size: 54px; color: var(--gold); }
-  .lock0 .t0, .lock1 .t1, .lock2 .t2, .lock3 .t3, .lock4 .t4, .lock5 .t5, .lock6 .t6, .lock7 .t7 { display: none; }
+  .lock0 .t0, .lock1 .t1, .lock2 .t2, .lock3 .t3, .lock4 .t4, .lock5 .t5, .lock6 .t6, .lock7 .t7 { display: none !important; }   /* !important: over the touch buttons' own display */
   /* instructions: a plain, upright face — easier to read than the display font */
   #help, #title table:not(.board), .thumbs, #more, .card small, #quit p { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-weight: 700; letter-spacing: .01em; }
   #help, #title table:not(.board) { transform: none; }
@@ -212,7 +212,7 @@
   </table>
   </div><table class="board"></table></div>
   <p class="keys">← → CHOOSE · SPACE TO RIDE · G LOCKER</p>
-  <p class="thumbs">LEFT THUMB STEERS AND ROLLS · RIGHT THUMB SWIPES DOWN THEN UP TO POP, TAPS TO GRAB AND THROW TRICKS</p>
+  <p class="thumbs">LEFT THUMB STEERS · RIGHT THUMB SWIPES DOWN-UP TO POP, HOLDS SPIN OR FLIP IN THE AIR, TAPS TO GRAB</p>
   <div class="taps"><b data-key="Space">RIDE</b><b data-key="KeyG">LOCKER</b></div>
 </div>
 <div id="over" class="panel">
@@ -235,13 +235,10 @@
 </div>
 <div id="pad">
   <div id="stick"></div><div id="flick"></div><div id="knob"><i></i></div>
-  <div id="btns">
-    <b data-key="KeyE" class="t0 wake-only" style="grid-area: 1 / 1">RALEY</b><b data-key="KeyE" class="surf-only" style="grid-area: 1 / 1">SHOVE</b>
-    <b data-key="KeyQ" class="t1 wake-only" style="grid-area: 1 / 2">TANTRUM</b><b data-key="KeyQ" class="surf-only" style="grid-area: 1 / 2">180</b>
-    <b data-key="KeyR" class="t4 wake-only" style="grid-area: 1 / 3">S-BEND</b>
-    <b data-key="KeyW" style="grid-area: 2 / 1">NOSE</b><b data-key="KeyA" style="grid-area: 2 / 2">MELON</b><b data-key="KeyF" class="t2" style="grid-area: 2 / 3">STALE</b>
-    <b data-key="KeyS" style="grid-area: 3 / 1">TAIL</b><b data-key="KeyD" style="grid-area: 3 / 2">INDY</b><b data-key="KeyC" class="t5" style="grid-area: 3 / 3">MUTE</b>
-    <i class="lane" id="lane">↓<br>POP<br>↑</i>
+  <div id="btns">                <!-- rows that pack against the right edge: a trick that isn't unlocked yet leaves no gap -->
+    <div><b data-key="KeyE" class="t0 wake-only">RALEY</b><b data-key="KeyE" class="surf-only">SHOVE</b><b data-key="KeyQ" class="t1 wake-only">TANTRUM</b><b data-key="KeyQ" class="surf-only">180</b><b data-key="KeyR" class="t4 wake-only">S-BEND</b></div>
+    <div><b data-key="KeyW">NOSE</b><b data-key="KeyA">MELON</b><b data-key="KeyF" class="t2">STALE</b><b data-key="KeyZ" class="big">SPIN</b></div>
+    <div><b data-key="KeyS">TAIL</b><b data-key="KeyD">INDY</b><b data-key="KeyC" class="t5">MUTE</b><b data-key="KeyX" class="big wake-only">FLIP</b></div>
   </div>
   <div id="corner"><b data-key="KeyM">♪</b><b data-key="Escape">✕</b></div>
 </div>
