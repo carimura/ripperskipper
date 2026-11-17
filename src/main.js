@@ -83,19 +83,6 @@ setKind('wake');
 // ---- XP and unlocks: every point scored adds to a total, kept in this browser, that unlocks tricks, boats and lakes (gear.js).
 // The locker comes up after each run's results (and with G): ↑ ↓ pick speakers, boats or lakes, ← → choose one that is unlocked. ----
 const PICK = ['trick', 'speaker', 'boat', 'lake'], all = Object.values(GEAR).flat(), [RALEY, TANTRUM, STALE, HOOCHIE, SBEND, MUTE, SPIN720, DOUBLE] = GEAR.trick;
-// ---- a demo rider: another boat out in a lane to port and ahead, its rider cutting the wake and throwing tricks on a loop (wakeboarding) ----
-const DEMO = new THREE.Vector3(-34, 0, -62), DEMO_TRICKS = [RALEY, TANTRUM, STALE, HOOCHIE, SBEND, MUTE];
-const dsim = createSim(), dboat = createBoat(), dgroup = new THREE.Group(), drider = createRider(dgroup), dtower = new THREE.Vector3();
-dboat.pick(3); dboat.speakers(0); dgroup.position.copy(DEMO); dgroup.add(dboat.group, drider.root); scene.add(dgroup);
-let dtrick = 0;
-function stepDemo() {                                // the physics is shared with the player's boat: the demo rides as if its boat were always up and running straight
-  const keep = [C.go, C.V, C.turn.phi]; C.go = 1; C.V = 10; C.turn.phi = 0;
-  step(dsim, dsim.crashed ? { steer: 0, flip: 0, pop: false, grab: null } : autopilot(dsim, DEMO_TRICKS[dtrick], (dsim.t + 3.6) % 7.2), STEP);
-  [C.go, C.V, C.turn.phi] = keep;
-  for (const e of dsim.events) if (e.type === 'land' && e.airT > 0.5) { dtrick = (dtrick + 1) % DEMO_TRICKS.length; if (dgroup.visible) fx.burst(DEMO.x + dsim.x, dsim.y, DEMO.z + dsim.z, 50, 0.7); }
-  dsim.events.length = 0;
-  if (dsim.crashed && dsim.crashT > 3) resetRider(dsim);   // up again, out of sight of the player's camera
-}
 if (import.meta.env.DEV && new URLSearchParams(location.search).has('unlock')) localStorage.setItem('ripperskipper.xp', 1e6);   // on the dev server, ?unlock opens everything
 let xp = +localStorage.getItem('ripperskipper.xp') || 0, played = localStorage.getItem('ripperskipper.xp') !== null, row = 2, demo = -1, fresh = [];   // demo: the trick the rider shows off in the locker   // fresh: what the last run unlocked
 const got = it => (it.first ? played : xp >= it.at);
@@ -221,30 +208,28 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => { keys.delete(e.code); stale.delete(e.code); });
 addEventListener('blur', () => keys.clear());
 
-function autopilot(sim, T, ph) {                    // carve out, cut back, pop off the wake and do trick T — the locker's show of a trick, and the demo rider
-  const a = sim.air, inp = { steer: a ? 0 : ph < 3.3 ? 1 : ph < 6.9 ? -1 : 0, flip: 0, pop: !a && ph > 4.6 && ph < 5.2, grab: null };
-  if (a) {
-    if (a.goal === undefined && (T === SPIN720 || T === DOUBLE) && sim.vy > 5.6) sim.vy = Math.max(sim.vy, 6.9);   // a showcase: the big jump is made the biggest, so there is time for the 720 or the double
-    a.goal ??= sim.vy > 6.75 ? 2 : sim.vy > 5.6 ? 1.5 : 1;   // the 720 and the double roll only off the biggest take-offs; otherwise something smaller
-    const end = a.goal * 2 * Math.PI - 0.6;
-    if (T === RALEY) inp.grab = a.t < 0.5 ? 'raley' : null;
-    else if (T === HOOCHIE) inp.grab = a.t < 0.5 ? 'hoochie' : null;
-    else if (T === STALE) inp.grab = 'stale';
-    else if (T === MUTE) inp.grab = 'mute';
-    else if (T === TANTRUM) inp.tant = a.tant < 5.6;
-    else if (T === SBEND) inp.bend = a.bend < 5.6;
-    else if (T === SPIN720) { if (a.goal > 1) inp.steer = Math.abs(a.spin) < end - 0.9 ? 1 : 0; else inp.grab = 'indy'; }   // let go early: a spin this quick coasts on a long way. Off a small take-off just a grab, so the rider stays regular for the next big one
-    else if (T === DOUBLE) inp.flip = a.flip < (a.goal > 1.5 ? end : 2 * Math.PI - 0.6) ? 1 : 0;
-  }
-  return inp;
-}
-
 function readInput() {
   if (game.mode !== 'run' && C.surf) {              // attract mode, surfing: hold the pocket, ollie into a grab now and then
     const ph = s.t % 6;
     return { steer: s.air ? 0 : clamp((surfLip(s.z) - 0.6 - s.x) * 1.5 - s.head * 1.2, -1, 1), flip: 0, pop: !s.air && ph > 5.3 && ph < 5.7 && game.mode !== 'gear', grab: s.air && s.air.t > 0.15 ? 'indy' : null };
   }
-  if (game.mode === 'gear' && PICK[row] === 'trick' && demo >= 0) return autopilot(s, GEAR.trick[demo], s.t % 7.2);   // the locker, on a trick: the rider does it again and again
+  if (game.mode === 'gear' && PICK[row] === 'trick' && demo >= 0) {   // the locker, on a trick: carve out, cut back, pop off the wake and do it — again and again
+    const ph = s.t % 7.2, a = s.air, T = GEAR.trick[demo], inp = { steer: a ? 0 : ph < 3.3 ? 1 : ph < 6.9 ? -1 : 0, flip: 0, pop: !a && ph > 4.6 && ph < 5.2, grab: null };
+    if (a) {
+      if (a.goal === undefined && (T === SPIN720 || T === DOUBLE) && s.vy > 5.6) s.vy = Math.max(s.vy, 6.9);   // a showcase: the big jump is made the biggest, so there is time for the 720 or the double
+      a.goal ??= s.vy > 6.75 ? 2 : s.vy > 5.6 ? 1.5 : 1;   // the 720 and the double roll only off the biggest take-offs; otherwise something smaller
+      const end = a.goal * 2 * Math.PI - 0.6;
+      if (T === RALEY) inp.grab = a.t < 0.5 ? 'raley' : null;
+      else if (T === HOOCHIE) inp.grab = a.t < 0.5 ? 'hoochie' : null;
+      else if (T === STALE) inp.grab = 'stale';
+      else if (T === MUTE) inp.grab = 'mute';
+      else if (T === TANTRUM) inp.tant = a.tant < 5.6;
+      else if (T === SBEND) inp.bend = a.bend < 5.6;
+      else if (T === SPIN720) { if (a.goal > 1) inp.steer = Math.abs(a.spin) < end - 0.9 ? 1 : 0; else inp.grab = 'indy'; }   // let go early: a spin this quick coasts on a long way. Off a small take-off just a grab, so the rider stays regular for the next big one
+      else if (T === DOUBLE) inp.flip = a.flip < (a.goal > 1.5 ? end : 2 * Math.PI - 0.6) ? 1 : 0;
+    }
+    return inp;
+  }
   if (game.mode !== 'run') {                        // attract mode: carve out, cut back, float a grab — in the locker, just ride along behind the boat to be looked at
     const ph = s.t % 7.2;
     return { steer: s.air || game.mode === 'gear' ? 0 : ph < 3.3 ? 1 : ph < 6.9 ? -1 : 0, flip: 0, pop: false, grab: s.air && s.air.t > 0.25 ? 'indy' : null };
@@ -373,20 +358,13 @@ function frame(now) {
   if (slow > 90 && dpr > 1) { dpr = Math.max(1, dpr - 0.25); slow = 0; resize(); }
   acc += dt;
   if (thumb) steer();                                 // the stick: keep up with take-offs and landings even while the thumb is still
-  while (acc >= STEP) { step(s, readInput(), STEP); handleEvents(); if (!C.surf) stepDemo(); acc -= STEP; }
+  while (acc >= STEP) { step(s, readInput(), STEP); handleEvents(); acc -= STEP; }
   if (game.mode === 'run') {
     if (C.surf && s.contact && !s.crashed) game.score += s.ride * dt;   // surfing pays by the second for staying on the wave, more the higher you ride
     if (!s.starting) game.time -= dt;                 // the clock starts once the rider is up
     if (game.time <= 0 && !s.air && !s.crashed) endRun();
   }
 
-  const dshow = !C.surf && C.go === 1 && !C.turn.phi && game.mode !== 'gear';   // the demo rider: out while the player's boat is running straight (and not in the locker)
-  dgroup.visible = dshow; water.wake2(DEMO.x, DEMO.z, dshow);
-  if (dshow) {                                       // before the player's boat: a boat's update sets the wake's turn, and the player's must win
-    dboat.update(dsim.t, false, 0, audio.beat, 0, DEMO.x + dsim.x, DEMO.z + dsim.z);
-    dboat.group.updateMatrix(); dtower.fromArray(C.TOWER).applyMatrix4(dboat.group.matrix);
-    drider.update(dsim, dt, dtower);
-  }
   boat.update(s.t, s.crashed || s.low > 0.5, s.crashed ? s.crashT : 0, audio.beat, C.surf || s.crashed ? 0 : clamp(s.x / 10, -1, 1) * Math.min(1, s.tension / 2600), s.x, s.z);
   water.boat(boat.group.position.x, boat.group.position.z, boat.group.rotation.y);
   boat.group.updateMatrixWorld(true);
@@ -437,5 +415,5 @@ $('entry').addEventListener('submit', e => { e.preventDefault(); submitName(); }
 
 if (new URLSearchParams(location.search).has('surf')) setKind('surf');
 if (new URLSearchParams(location.search).has('play')) startRun();
-window.__game = { s, game, startRun, endRun, rider, boat, dsim };
+window.__game = { s, game, startRun, endRun, rider, boat };
 requestAnimationFrame(frame);
