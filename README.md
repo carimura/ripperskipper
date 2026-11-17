@@ -45,7 +45,7 @@ That's all you need to play. For the leaderboard too, set up the Worker config o
 
 **Both:** M toggles music, Esc asks to quit the run, G opens the locker from the menus. Pick the mode on the title screen with ← →, or add `?surf` to the URL.
 
-**Touch** (phone held sideways): the left thumb steers with a stick that starts wherever it lands; in the air, a fresh push on it spins or rolls (whatever it was already holding at take-off doesn't). The right thumb pops by swiping down then back up anywhere off the buttons, holds SPIN or FLIP in the air for a spin (the way the rider is going) or a backroll, and taps the buttons for grabs and tricks.
+**Touch** (phone held sideways): the left thumb steers with a stick that starts wherever it lands; in the air, a fresh push on it spins or rolls (whatever it was already holding at take-off doesn't). The right thumb pops by swiping down then back up anywhere off the buttons, drags in the air to spin (left or right) or roll (down for a backroll, up for a front roll), and taps the buttons for grabs and tricks.
 
 ## Scoring and unlocks
 

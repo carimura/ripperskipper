@@ -233,7 +233,7 @@ function readInput() {
     return { steer: s.air || game.mode === 'gear' ? 0 : ph < 3.3 ? 1 : ph < 6.9 ? -1 : 0, flip: 0, pop: false, grab: s.air && s.air.t > 0.25 ? 'indy' : null };
   }
   const grab = held('KeyD') ? 'indy' : held('KeyA') ? 'melon' : held('KeyS') ? 'tail' : held('KeyW') ? 'nose' : held('KeyF') && got(STALE) ? 'stale' : held('KeyC') && got(MUTE) ? 'mute' : null, b = held('KeyE');
-  const spin = s.air && held('KeyZ') ? (s.vx < 0 ? -1 : 1) : 0, roll = s.air && held('KeyX') ? 1 : 0;   // the phone's SPIN and FLIP buttons: in the air, a spin the way the rider is going, a backroll
+  const spin = s.air ? twist.x : 0, roll = s.air ? twist.y : 0;   // the phone's right thumb, dragged in the air: a spin, a roll
   return {
     steer: (held('ArrowRight') ? 1 : 0) - (held('ArrowLeft') ? 1 : 0) || spin,
     flip: C.surf ? 0 : (held('ArrowDown') ? 1 : 0) - (held('ArrowUp') ? 1 : 0) || roll,   // no rolls on a surfboard
@@ -258,6 +258,7 @@ function handleEvents() {
     }
     else if (e.type === 'land') {
       stale.clear();                                  // a key held through the air goes back to carving
+      twist.x = twist.y = 0; if (flick) { flick.ax = flick.x; flick.ay = flick.y; flick.at = flick.y; }   // the right thumb starts afresh for the next air
       const hard = clamp(e.impact / 8, 0.15, 1);
       fx.burst(s.x, s.y, s.z, 30 + 130 * hard, 0.45 + 0.6 * hard); audio.splash(0.3 + 0.7 * hard); shake = Math.max(shake, 0.12 * hard);
       if (hard > 0.6) audio.thud(0.6 * hard);         // a flat landing is heard
@@ -395,15 +396,24 @@ function steer(dx, dy) {                                                        
 $('stick').addEventListener('pointerdown', e => { e.target.setPointerCapture(e.pointerId); thumb = [e.clientX, e.clientY]; knob.style.left = e.clientX + 'px'; knob.style.top = e.clientY + 'px'; audio.start(); });
 $('stick').addEventListener('pointermove', e => thumb && steer(e.clientX - thumb[0], e.clientY - thumb[1]));
 for (const t of ['pointerup', 'pointercancel']) $('stick').addEventListener(t, () => { thumb = null; steer(0, 0); knob.style.left = knob.style.top = ''; });
-let flick = null;                                                                // the right thumb off the buttons: drag down to load, then back up (or let go) to pop
-$('flick').addEventListener('pointerdown', e => { e.target.setPointerCapture(e.pointerId); flick = { at: e.clientY, on: false }; audio.start(); });
+let flick = null, twist = { x: 0, y: 0 };                                       // the right thumb off the buttons: on the water drag down to load, then back up (or let go) to pop;
+$('flick').addEventListener('pointerdown', e => {                                // in the air drag ← → to spin that way, ↓ to backroll, ↑ to front roll (twist), measured from where the thumb was
+  e.target.setPointerCapture(e.pointerId); flick = { at: e.clientY, on: false, ax: e.clientX, ay: e.clientY, x: e.clientX, y: e.clientY, popT: -1e9 }; audio.start();
+});
 $('flick').addEventListener('pointermove', e => {
   if (!flick) return;
-  const y = e.clientY, f = flick;
-  if (f.on ? f.at - y > 10 : y - f.at > 14) { f.on = !f.on; f.at = y; key(f.on ? 'keydown' : 'keyup', 'Space'); }
+  const x = e.clientX, y = e.clientY, f = flick; f.x = x; f.y = y;
+  if (s.air) {
+    if (performance.now() - f.popT < 250) { f.ax = x; f.ay = Math.min(f.ay, y); }   // the pop's flick carries on up a moment: that isn't a roll
+    const dx = x - f.ax, dy = y - f.ay;
+    twist.x = Math.abs(dx) > 30 ? Math.sign(dx) : 0; twist.y = Math.abs(dy) > 40 ? Math.sign(dy) : 0;
+    return;
+  }
+  f.ax = x; f.ay = y;                                                            // on the water the air's twist is measured from wherever the thumb is
+  if (f.on ? f.at - y > 10 : y - f.at > 14) { f.on = !f.on; f.at = y; key(f.on ? 'keydown' : 'keyup', 'Space'); if (!f.on) f.popT = performance.now(); }
   else f.at = f.on ? Math.max(f.at, y) : Math.min(f.at, y);                     // measured from the lowest point while loading, the highest while not
 });
-for (const t of ['pointerup', 'pointercancel']) $('flick').addEventListener(t, () => { if (flick?.on) key('keyup', 'Space'); flick = null; });
+for (const t of ['pointerup', 'pointercancel']) $('flick').addEventListener(t, () => { if (flick?.on) key('keyup', 'Space'); flick = null; twist.x = twist.y = 0; });
 for (const el of document.querySelectorAll('.pick span')) el.addEventListener('click', () => {      // tap a mode to choose it
   if (game.mode !== 'run' && game.mode !== 'gear' && el.classList.contains('w') !== (game.kind === 'wake')) setKind(game.kind === 'wake' ? 'surf' : 'wake');
 });

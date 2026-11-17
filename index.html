@@ -154,7 +154,6 @@
   #btns { position: fixed; right: calc(14px + env(safe-area-inset-right)); bottom: calc(14px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
   #btns div { display: flex; gap: 8px; }
   #btns b { width: 58px; height: 58px; }
-  #btns b.big { width: 76px; border-radius: 29px; border-color: var(--gold); font-size: 15px; }   /* spin and flip, nearest the thumb */
   #btns b, #corner b { display: flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: normal; font-size: 12px; letter-spacing: .04em; color: #fff; text-shadow: 0 2px 0 var(--ink);
             background: rgba(11, 16, 38, .4); border: 3px solid rgba(255, 255, 255, .55); }
   #btns b.held, #corner b.held { background: var(--gold); color: var(--ink); text-shadow: none; }
@@ -212,7 +211,7 @@
   </table>
   </div><table class="board"></table></div>
   <p class="keys">← → CHOOSE · SPACE TO RIDE · G LOCKER</p>
-  <p class="thumbs">LEFT THUMB STEERS · RIGHT THUMB SWIPES DOWN-UP TO POP, HOLDS SPIN OR FLIP IN THE AIR, TAPS TO GRAB</p>
+  <p class="thumbs">LEFT THUMB STEERS · RIGHT THUMB SWIPES DOWN-UP TO POP, DRAGS IN THE AIR TO SPIN OR FLIP, TAPS TO GRAB</p>
   <div class="taps"><b data-key="Space">RIDE</b><b data-key="KeyG">LOCKER</b></div>
 </div>
 <div id="over" class="panel">
@@ -237,8 +236,8 @@
   <div id="stick"></div><div id="flick"></div><div id="knob"><i></i></div>
   <div id="btns">                <!-- rows that pack against the right edge: a trick that isn't unlocked yet leaves no gap -->
     <div><b data-key="KeyE" class="t0 wake-only">RALEY</b><b data-key="KeyE" class="surf-only">SHOVE</b><b data-key="KeyQ" class="t1 wake-only">TANTRUM</b><b data-key="KeyQ" class="surf-only">180</b><b data-key="KeyR" class="t4 wake-only">S-BEND</b></div>
-    <div><b data-key="KeyW">NOSE</b><b data-key="KeyA">MELON</b><b data-key="KeyF" class="t2">STALE</b><b data-key="KeyZ" class="big">SPIN</b></div>
-    <div><b data-key="KeyS">TAIL</b><b data-key="KeyD">INDY</b><b data-key="KeyC" class="t5">MUTE</b><b data-key="KeyX" class="big wake-only">FLIP</b></div>
+    <div><b data-key="KeyW">NOSE</b><b data-key="KeyA">MELON</b><b data-key="KeyF" class="t2">STALE</b></div>
+    <div><b data-key="KeyS">TAIL</b><b data-key="KeyD">INDY</b><b data-key="KeyC" class="t5">MUTE</b></div>
   </div>
   <div id="corner"><b data-key="KeyM">♪</b><b data-key="Escape">✕</b></div>
 </div>
