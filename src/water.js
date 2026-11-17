@@ -8,6 +8,7 @@ import { SUN } from './gfx.js';
 const HEIGHT = `
   uniform float uTime, uDist, uSurf, uGo;
   uniform vec3 uTurn;       // the boat turning back: radius, where the turn began, how far round it is
+  uniform vec3 uWake2;      // the demo rider's boat out in its lane: x, z, and 1 if it is there
   vec2 wakeCoord(vec2 p) {  // (across the wake, metres behind the boat along it): straight to where the turn began, then round the arc
     if (uTurn.z < 0.001) return p;
     vec2 q = p - uTurn.xy; float a = atan(-q.y, -q.x);
@@ -41,7 +42,7 @@ const HEIGHT = `
   float waterH(vec2 p) {
     vec2 w = wakeCoord(p);
     float rooster = 0.2 * exp(-pow((w.y - 2.0) / 1.5, 2.0) - pow(w.x / 0.7, 2.0));   // prop wash hump, out of the rider's reach
-    return ((uSurf > 0.5 ? surfH(w) : wakeH(w)) + rooster) * uGo + swell(vec2(p.x, p.y - uDist));
+    return ((uSurf > 0.5 ? surfH(w) : wakeH(w)) + rooster + uWake2.z * wakeH(p - uWake2.xy)) * uGo + swell(vec2(p.x, p.y - uDist));
   }`;
 
 const VERT = HEIGHT + `
@@ -119,6 +120,10 @@ const FRAG = HEIGHT + SKY_GLSL + `
       float top = exp(-pow(lx / 0.24, 2.0)) * smoothstep(2.6, 4.4, d) * 1.08;
       float broken = smoothstep(0.12, 0.5, face) * smoothstep(6.1, 6.5, d) * mix(1.1, 0.7, smoothstep(6.6, 9.0, d)) * (1.0 - smoothstep(9.0, 20.0, d));
       m = max(max(top * (1.0 - smoothstep(6.4, 7.5, d)), broken), max(prop, hull));
+    }
+    if (uWake2.z > 0.5) {                              // the demo boat's wake: its crests and prop wash
+      vec2 q = p - uWake2.xy; float d2 = q.y, g2 = smoothstep(-0.5, 2.5, d2), u2 = abs(q.x) - wakeHalfWidth(d2), dd2 = max(d2, 0.0);
+      m = max(m, max(exp(-pow((u2 + 0.1) / 0.3, 2.0)) * g2 * (1.0 - smoothstep(5.0, 21.0, d2)) * 1.2, (1.0 - smoothstep(0.35, 1.0, abs(q.x) / (0.55 + 0.035 * dd2))) * exp(-dd2 / 15.0) * step(-0.4, d2) * 1.3));
     }
     m *= uGo;                                          // no wake until the boat is moving
 
@@ -211,7 +216,7 @@ export function createWater(normalTex) {
     uDeep: { value: PALETTE.deep }, uMid: { value: PALETTE.mid }, uLight: { value: PALETTE.light },
     uFoam: { value: PALETTE.foam }, uFoamShade: { value: PALETTE.foamShade },
     uHorizon: { value: PALETTE.horizon }, uSkyMid: { value: PALETTE.skyMid }, uZenith: { value: PALETTE.zenith }, uHaze: { value: PALETTE.haze },
-    uRider: { value: new THREE.Vector4() }, uBoat: { value: new THREE.Vector3() }, uTurn: { value: new THREE.Vector3() }, uTrail: { value: new THREE.Vector3(0, cellSize, N) }, uSplash: { value: new THREE.Vector4() },
+    uRider: { value: new THREE.Vector4() }, uBoat: { value: new THREE.Vector3() }, uTurn: { value: new THREE.Vector3() }, uTrail: { value: new THREE.Vector3(0, cellSize, N) }, uSplash: { value: new THREE.Vector4() }, uWake2: { value: new THREE.Vector3() },
   };
   const mesh = new THREE.Mesh(geo, new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FRAG }));
   mesh.frustumCulled = false;
@@ -221,6 +226,7 @@ export function createWater(normalTex) {
   return {
     mesh,
     boat(x, z, yaw) { uniforms.uBoat.value.set(x, z, yaw); },
+    wake2(x, z, on) { uniforms.uWake2.value.set(x, z, on ? 1 : 0); },
     splash(x, z, strength, speed) { uniforms.uSplash.value.set(x, z, 0.3, strength); grow = speed; },
     update(s, dt) {
       const sp = uniforms.uSplash.value;             // the ring stays put in the water, so it streams back past the boat

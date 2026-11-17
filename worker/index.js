@@ -8,9 +8,25 @@ let ready = false;                                     // the table is made on f
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 const top = (db, mode) => db.prepare('SELECT name, score FROM scores WHERE mode = ? ORDER BY score DESC, at ASC LIMIT ?').bind(mode, KEEP).all().then(r => r.results);
 
+// Plausible analytics through first-party paths, so ad-block lists that match the vendor's domain don't catch it.
+// Only www.ripperskipper.com reports; local runs and other hosts are dropped. The visitor's UA and IP go upstream for Plausible's visitor hash and bot filter.
+async function pulse(request, url) {
+  if (url.pathname === '/js/pulse') {
+    const r = await fetch('https://plausible.io/js/pa-51czz4jOC8GyhDHrsLH89.js', { cf: { cacheTtl: 21600, cacheEverything: true } });
+    return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/javascript', 'cache-control': 'public, max-age=3600' } });
+  }
+  if (request.method !== 'POST' || url.hostname !== 'www.ripperskipper.com') return new Response(null, { status: 202 });
+  const headers = { 'content-type': request.headers.get('content-type') ?? 'text/plain' };
+  if (request.headers.get('user-agent')) headers['user-agent'] = request.headers.get('user-agent');
+  if (request.headers.get('cf-connecting-ip')) headers['x-forwarded-for'] = request.headers.get('cf-connecting-ip');
+  const r = await fetch('https://plausible.io/api/event', { method: 'POST', headers, body: await request.text() });
+  return new Response(r.body, { status: r.status });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === '/js/pulse' || url.pathname === '/api/pulse') return pulse(request, url);
     if (url.pathname !== '/api/scores') return env.ASSETS.fetch(request);
     const db = env.DB;
     if (!ready) { await db.prepare('CREATE TABLE IF NOT EXISTS scores (id INTEGER PRIMARY KEY AUTOINCREMENT, mode TEXT NOT NULL, name TEXT NOT NULL, score INTEGER NOT NULL, at INTEGER NOT NULL)').run(); ready = true; }
